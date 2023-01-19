@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Script Version="1.0">
+  <Language>Python</Language>
+  <Text>#####################################################################################
+## Registration of several rounds of staining using channel 1 DAPI as a reference
+##
+## Macro name: Registration of several round of staining
+## Required files: czi files
+## Needs the metadata to be filled
+## 
+#############################################################################################
+##
+## Remove all open images
+Zen.Application.Documents.RemoveAll()
+##
+## activate IO library
+from System.IO import File, Directory, FileInfo, Path   
+##
+
+
+## create setup dialog
+window = ZenWindow()
+#Images = Zen.Application.Environment.GetFolderPath(ZenSpecialFolder.Images)
+InImages = "C:\\OAD\\Input\\CZI Images"
+OutImages = "C:\\OAD\\Output"
+window.AddFolderBrowser('sourcefolder','Source folder             ',InImages)
+window.AddFolderBrowser('destfolder','Destination folder     ',OutImages)
+
+## do setup
+result=window.Show()
+
+## check, if Cancel button was clicked
+if result.HasCanceled == True:
+    sys.exit('Macro aborted with Cancel!')
+
+## get string name of source/destination folder
+path = str(result.GetValue('sourcefolder'))
+savePath = str(result.GetValue('destfolder'))
+
+## set file type
+itype = '*.CZI'  
+## get files
+files = Directory.GetFiles(path,itype)
+## Check, if image type exists
+if files.Length == 0: 
+    strMessage = 'Images of type : ' + itype + ' do not exist!\nRestart macro and select an existing image type!'
+    sys.exit(strMessage)
+
+## Open first image
+file = files[0] 
+fileInfo = FileInfo(file) 
+PathAndFile = Path.Combine(path,fileInfo.Name)
+image = Zen.Application.LoadImage(PathAndFile,False)
+## loop over all CZI images in the folder
+
+for i in range(1,files.Length): 
+    ## Check if files are corrupted
+    file = files[i] 
+    fileInfo = FileInfo(file) 
+    PathAndFile = Path.Combine(path,fileInfo.Name)
+    image_to_append = Zen.Application.LoadImage(PathAndFile,False)
+    image_channels = Zen.Processing.Utilities.AddChannels(image, image_to_append)
+    image = Zen.Processing.Transformation.Geometric.ChannelAlignment(image_channels, ZenThirdProcessingDimension.None, ZenRegistrationMethod.Translation, ZenInterpolation.Linear, ZenRegistrationQuality.High, (i-1)*4+1, i*4+1, True)
+
+
+
+Zen.Application.Documents.Add(image)
+imageName = Path.Combine(savePath,'Registered.czi')
+image.Save(imageName)
+
+
+
+</Text>
+  <Author>Richard De Mets</Author>
+  <Description></Description>
+  <ApplicationName></ApplicationName>
+  <Keywords></Keywords>
+  <Row>59</Row>
+  <Column>20</Column>
+</Script>
